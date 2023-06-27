@@ -1,7 +1,17 @@
-import openpyxl
 import win32com.client
 import os
 import datetime
+
+
+"""
+Данная функция выполняет выгрузку данных в Excel. В функцию передаются данные и те записываются в файл
+_______
+Документация по pywin32: https://mhammond.github.io/pywin32/
+_______
+Если необходимо изменить записываемые данные в excel, 
+то в переменную data вносим или удаляем необходимые переменные
+"""
+
 
 def Excel(query, lemmas, otvet, opportunities):
 

@@ -1,9 +1,17 @@
 import speech_recognition
 import pymorphy3
-import pyttsx3
 
-engine=pyttsx3.init()
+"""
+Алгоритмы для прослушивания речи, преобразования его в речь,
+а также прописан процесс лемматизации.
+____________
+Документация по библиотеке speech_recognition:  https://pypi.org/project/SpeechRecognition/
+Документация по библиотеке pymorphy3: https://readthedocs.org/projects/pymorphy/downloads/pdf/v0.5.6/
+____________
+"""
 sr = speech_recognition.Recognizer() #Подключаем класс для прослушивания
+
+#Функция по распознования голоса и преобразовании его в текст 
 def listen_command():
     try:
         with speech_recognition.Microphone() as mic:  #Работаем с микрофоном
@@ -13,8 +21,9 @@ def listen_command():
             
         return query
     except speech_recognition.UnknownValueError:
-        return 'Повторите, что вы хотите сделать :/'
+        return 0
     
+#Функция по лемматизации распозновонного текста   
 def lemmatize_text(query):
     # Создаем объект морфологического анализатора
     morph = pymorphy3.MorphAnalyzer()

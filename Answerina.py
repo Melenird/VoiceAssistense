@@ -1,54 +1,74 @@
 import VoiceMagic
+import pyttsx3
+import sqlite3
 
-Otvet={
-    0: "Я не могу ответить на ваш вопрос",
-    1: "Документы можно подать по почте, почтовый адрес направления документов, необходимых для поступления — 198035, г. Санкт-Петербург, ул. Двинская, д.5/7",
-    2: "Копии документов заверять не нужно. Вы предоставляете простые ксерокопии.",
-    3: "При подаче заявления о приеме в Университет необходимо предоставить: Заявление о приеме на обучение, на обработку персональных данных, ксерокопии документов удостоверяющих личность, страховое свидетельство и оригиналы документа об образовании, фотографии 3x4 и результаты прохождения медицинского осмотра",
-    4: "Да, нужна. Подробнее можете узнать на сайте приемной комисии ГУМРФ",
-    5: "Всем поступающим иногородним студентам предоставляется общежитие. Курсанты (плавсостав) проживают в экипажах, им предоставляется обмундирование и питание. Студенты (в том числе и обучающиеся на бюджете) оплачивают проживание в общежитии при заселении."
-}
+"""
+В файле содержатся функции, отвечающие за ответ
+__________________________
+Если необходимо увеличить базу данных вопросов, то необходимо:
+1. Прописать в функции новую переменную для нового вопроса. 
+Ее структура должна выглядеть следующим образом:
+*Имя_Переменной*=len(request.intersection({*Ключевые слова через пробел и в одинарных кавычках*}))
+2. Внести данную переменную в массив FAQ.
+3. В словаре Otvet прописать новый номер ключа и ответ на вопрос. 
+Пример:
+*номер ключа* : "*ответ*"
+_____________________
+"""
 
-
-
-def poisk(request): #Функция поиска ключа
-    FAQ=TegAnswer(request) # Формирование массива со значением совпавших множеств
+#Функция выбора ответа из Базы данных в таблице TagAndAnswer
+def Otvet(KeyAnswer):
+    if KeyAnswer ==0: #Проверка возможности ответа
+        return "Не могу ответить на ваш вопрос. Перевожу вас на оператора"
+    sqlite_connection = sqlite3.connect('AbiturGumrf.db') #Вызываем базу данных
+    cursor = sqlite_connection.cursor()
+    cursor.execute("SELECT Answer FROM TagAndAnswer WHERE id = ?", (KeyAnswer, )) #Ищем правильный ответ из Базы данных
+    result = cursor.fetchone()
+    if result:
+        return result[0] #Возвращаем результат
+    
+#Функция поиска ключа. Является основной функцией в данном файле
+def poisk(request): 
+    FAQ=Teg(request) # Формирование массива со значением совпавших множеств
     KeyAnswer=FoundAnswer(FAQ, request) #Поиск ключа среди наибольших совпавших значений
-    while (KeyAnswer== 0): # Алгоритм переспроса вопроса, если было названо мало слов в множестве
+    if (KeyAnswer== 0): # Алгоритм переспроса вопроса, если было названо мало слов в множестве
         request=RepeatPlease(request) #Вызов функции 
-        print (request)
-        FAQ=TegAnswer(request) #Формирование нового массива
+        FAQ=Teg(request) #Формирование нового массива
         KeyAnswer=FoundAnswer(FAQ, request) # поиск нового ключа
     return KeyAnswer
             
-def TegAnswer(request):
-    DontUnderstand=2 #Минимум должно быть 2 ключевых слова в запросе. Если их меньше, система просит либо повторить вопрос, либо направляет к оператору
-    Post=len(request.intersection({'почта', 'документ', 'дистанционно'})) #Вбиваем ключевые слова и смотрим множества, которые получились
-    Noterius=len(request.intersection({'нотариус', 'заверить', 'документ', 'паспорт'}))
-    SubmissionOfDocuments= len(request.intersection({'подача', 'заявления', 'документ', 'поступление'}))
-    MedKomissia= len(request.intersection({'справка', 'медицинская', 'документ', 'справка'}))
-    Dormitory= len(request.intersection({'общежитие', 'заселяться', 'город'}))
+#Функция создания массива колличества совпавших элементов с множеством запроса             
+def Teg(request):
+    sqlite_connection = sqlite3.connect('AbiturGumrf.db') #Вызываем базу данных
+    cursor = sqlite_connection.cursor()
+    sqlite_select_query = """SELECT * from TagAndAnswer""" #Вызываем тэги из Базы данных
+    cursor.execute(sqlite_select_query)
+    records = cursor.fetchall() 
+    FAQ=[ n for n in records] #Формируем массив колличества совпавших элементов с множеством запроса
+    for row in records:
+        FAQ[row[0]-1]= len(request.intersection(set(row[1].split())))
+    FAQ.insert(0, 1)
+    return FAQ  
 
-    FAQ= [DontUnderstand, Post, Noterius,SubmissionOfDocuments,MedKomissia, Dormitory] #Создаем массив с вопросами
-    return FAQ
-
+#Функция поиска лучшего совпадения. Чем больше совпавших значений, тем вероятнее ответ на вопрос
 def FoundAnswer(FAQ, request):
-    p=0
-    Answer=FAQ[0] #Изучаем количество пересеченных множество
-    AnswerIndex=0 #Запоминаем индекс(чтобы потом дать ответ)
+    Answer = max(FAQ)
+    AnswerIndex= FAQ. index (Answer) 
+    FAQ.pop(AnswerIndex)
     for poiski in FAQ: #Алгоритма поиска наибольшего пересечения
-        if FAQ[poiski]>=Answer:
-            Answer=FAQ[poiski]
-            AnswerIndex=poiski
-    for poiski in FAQ: #Алгоритм нахождения индекса ключа
-        if (poiski==AnswerIndex):
-            p=poiski
-    return p
+        if FAQ[poiski] == Answer:
+            AnswerIndex =0 
+    return AnswerIndex
 
+#Функция, которая вызывается, если программа не может ответить на вопрос. 
+#Выполняет переспрашивание вопроса и увеличение множество запроса новыми данными.
 def RepeatPlease(request):
-    print('Повторите свой вопрос')
-    query =VoiceMagic.listen_command() #Прослушивает новый запрос
-    lemmas = VoiceMagic.lemmatize_text(query) #Леммитизируем запрос
+    engine=pyttsx3.init()
+    engine.say('Повторите свой вопрос')
+    engine.runAndWait() #Воспроизводим речь ответа
+    Biber=('У нотариуса')
+    #query =VoiceMagic.listen_command() #Прослушивает новый запрос
+    lemmas = VoiceMagic.lemmatize_text(Biber) #Леммитизируем запрос
     print(lemmas) #Выводим полученные ключевые слова
     newrequest= set(lemmas) #Переводим леммизированные слова во множество
     Itog= newrequest.union(request)
